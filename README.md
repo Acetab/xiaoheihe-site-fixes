@@ -1,0 +1,76 @@
+# 小黑盒网页版增强
+
+修复小黑盒网页版的评论跳动、浏览历史跳转和引用链接，并补上收藏夹浏览与批量移动。适用于 `www.xiaoheihe.cn` 和 `xiaoheihe.cn`，当前版本 **1.3.0**。
+
+## 安装
+
+先在浏览器安装 Tampermonkey 等用户脚本管理器，再点击：
+
+**[安装完整合集](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-fixes.user.js)**
+
+如果浏览器只显示代码，在脚本管理器中新建脚本，粘贴文件的全部内容并保存。刷新小黑盒页面后生效。脚本管理器应允许脚本在网页上下文执行；保留脚本的 `@grant none`、`@sandbox raw` 和 `@inject-into page` 声明。
+
+只需要部分功能，也可以选择独立版。**合集与包含相同功能的独立版不要同时启用**，升级时先停用旧版脚本。
+
+| 功能 | 效果 | 安装 |
+| --- | --- | --- |
+| 评论点击修复 | 可见评论点击后不再强制居中；裁切评论只做最小滚动，保留外部评论定位 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-no-comment-autoscroll.user.js) |
+| 浏览历史新标签页 | 左键、中键打开新标签页，保留列表位置；Shift + 左键保留当前页跳转 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-list-open-in-new-tab.user.js) |
+| 引用链接修复 | 将帖子类型的 `heybox://` 引用链接转换为网页版链接，在新标签页打开 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-heybox-link-fix.user.js) |
+| 收藏夹管理 | 按收藏夹浏览、加载更多、筛选已加载内容、多选并移动到目标夹 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-favorite-folders.user.js) |
+
+## 收藏夹怎么用
+
+登录小黑盒并进入[我的收藏](https://www.xiaoheihe.cn/app/user/favour/content)。左侧可切换收藏夹，右侧显示内容。每次“加载更多”最多读取 30 条；标题、摘要和作者筛选只作用于**已加载内容**，并非全夹搜索。
+
+批量移动步骤：
+
+1. 点击“批量管理”，勾选内容，或选择“全选当前结果”。全选只包含当前筛选结果中的已加载有效条目。
+2. 点击“移动到…”，选择目标收藏夹，核对预览和数量。
+3. 点击“确认移动”后才提交。脚本逐条移动，显示进度，可随时点击“停止后续”。正在提交的那一条可能完成。
+4. 遇到失败或网络结果不明时停止后续操作，不自动重试。成功条目清除选择，失败与未处理条目保留；网络结果不明时请先核对目标夹。
+
+选择按收藏夹分别保存；手动刷新会清空当前夹选择。点击“使用原收藏列表”可恢复站点原界面。
+
+**批量移动属于实验功能：**接口与参数对照官方客户端声明，成功、失败、停止、跨页选择等流程通过受控响应验证，尚未用真实收藏完成服务器端移动验证。
+
+## 兼容性与限制
+
+- 2026-10-15 在 Windows / Edge 155 中，通过页面上下文注入同一份脚本验证评论、历史、真实引用链接及收藏夹浏览、分页和选择。受控回归覆盖引用链接 26 项、评论 6 项、收藏夹 25 项。
+- 尚未验证用户脚本管理器的自动注入流程，也未验证 Firefox 或其他浏览器组合。脚本需要页面上下文，管理器的注入设置可能影响效果。
+- 新标签页是否获得焦点由浏览器决定。若浏览器阻止弹窗，需要允许本站弹出窗口后重试。
+- 依赖站点现有页面结构、路由和请求客户端；站点改版可能导致功能失效。没有固定站点资源哈希或导出名。
+- 本项目是非官方增强脚本，与小黑盒官方无关联。
+
+## 账号与数据
+
+脚本不绑定作者账号。其他人安装后使用自己的登录状态，收藏夹管理需要先登录小黑盒。脚本不内置个人账号、收藏夹 ID、Cookie 或令牌，没有统计上报或项目自建服务器。收藏请求复用小黑盒页面的请求客户端；只有确认移动后才提交移动请求。
+
+## 临时关闭功能
+
+在小黑盒页面控制台执行，`false` 关闭，`true` 重新启用。刷新后默认启用。
+
+```js
+window.__xhhNoCommentJump.set(false) // 评论点击修复
+window.__xhhNewTab.set(false)        // 浏览历史修复
+window.__xhhHeyboxLink.set(false)    // 引用链接修复
+window.__xhhFolders.set(false)      // 收藏夹界面
+```
+
+移动过程中请先停止后续操作，并等待当前请求结束，再关闭收藏夹功能。
+
+## 开发
+
+`src/` 是四项功能的源码。使用 Node.js，无需安装依赖：
+
+```sh
+node build.cjs
+```
+
+会重新生成根目录的合集和四个独立 `.user.js` 文件。修改源码时一并提交生成文件；发布新版本时更新 `build.cjs` 中的版本号。安装文件带有当前仓库的更新地址，后续更新由脚本管理器按其设置检查。
+
+问题反馈请到 [Issues](https://github.com/Acetab/xiaoheihe-site-fixes/issues)，附上浏览器、脚本管理器、脚本版本及复现步骤。截图请遮盖个人信息。
+
+## 许可证
+
+[MIT](LICENSE)
