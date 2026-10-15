@@ -6,7 +6,9 @@
 
 先在浏览器安装 Tampermonkey 等用户脚本管理器，再点击：
 
-**[安装完整合集](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-fixes.user.js)**
+**[从 Greasy Fork 安装完整合集](https://greasyfork.org/zh-CN/scripts/600299)**（推荐）
+
+也可使用 [GitHub 直接安装合集](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-fixes.user.js)。两种来源选择一种即可，不要重复启用。
 
 如果浏览器只显示代码，在脚本管理器中新建脚本，粘贴文件的全部内容并保存。刷新小黑盒页面后生效。脚本管理器应允许脚本在网页上下文执行；保留脚本的 `@grant none`、`@sandbox raw` 和 `@inject-into page` 声明。
 
@@ -32,7 +34,7 @@
 
 选择按收藏夹分别保存；手动刷新会清空当前夹选择。点击“使用原收藏列表”可恢复站点原界面。
 
-**批量移动属于实验功能：**接口与参数对照官方客户端声明，成功、失败、停止、跨页选择等流程通过受控响应验证，尚未用真实收藏完成服务器端移动验证。
+**批量移动属于实验功能**：接口与参数对照官方客户端声明，成功、失败、停止、跨页选择等流程通过受控响应验证，尚未用真实收藏完成服务器端移动验证。
 
 ## 兼容性与限制
 
@@ -67,7 +69,7 @@ window.__xhhFolders.set(false)      // 收藏夹界面
 node build.cjs
 ```
 
-会重新生成根目录的合集和四个独立 `.user.js` 文件。修改源码时一并提交生成文件；发布新版本时更新 `build.cjs` 中的版本号。安装文件带有当前仓库的更新地址，后续更新由脚本管理器按其设置检查。
+会重新生成根目录的合集和四个独立 `.user.js` 文件。修改源码时一并提交生成文件；发布新版本时更新 `build.cjs` 中的版本号。GitHub 安装文件带有当前仓库的更新地址；Greasy Fork 安装版通过 Greasy Fork 获取更新，需同步发布新版本。更新由脚本管理器按其设置检查。
 
 问题反馈请到 [Issues](https://github.com/Acetab/xiaoheihe-site-fixes/issues)，附上浏览器、脚本管理器、脚本版本及复现步骤。截图请遮盖个人信息。
 
