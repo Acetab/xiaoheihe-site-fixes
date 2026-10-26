@@ -1,7 +1,9 @@
 (function () {
   'use strict';
   if (window.__xhhFolders) return;
-  const state = window.__xhhFolders = { enabled: true, version: '1.3.0', mounted: false, moving: false, lastOperation: null };
+  const state = window.__xhhFolders = { enabled: true, version: '1.4.0', mounted: false, moving: false, lastOperation: null };
+  const navigation = window.__xhhNavigation;
+  let savedRoute = null;
   const PATH = '/bbs/app/profile/fav/folder/v2/links';
   const MOVE = '/bbs/app/profile/fav/folder/move';
   const LIMIT = 30;
@@ -155,7 +157,7 @@
       }
       const body = el('div', { class: 'xhh-item-body' });
       if (item.is_deleted || !validId(id)) body.append(el('p', { class: 'xhh-item-title xhh-muted' }, '内容已失效'));
-      else body.append(el('a', { class: 'xhh-item-title', href: location.origin + '/app/bbs/link/' + id, target: '_blank', rel: 'noopener noreferrer' }, titleOf(item)));
+      else body.append(el('a', { class: 'xhh-item-title', href: location.origin + '/app/bbs/link/' + id, target: navigation?.mode === 'current-tab' ? '_self' : '_blank', rel: 'noopener noreferrer', onclick: event => navigation?.handleLink(event) }, titleOf(item)));
       const description = cleanText(item.link?.description);
       if (description && description !== cleanText(titleOf(item))) body.append(el('p', { class: 'xhh-description' }, description));
       const author = item.link?.user?.username;
@@ -316,7 +318,11 @@
     @media(max-width:700px){#page-user-favour{width:calc(100vw - 24px)!important;max-width:calc(100vw - 24px);margin-left:12px!important;margin-right:12px!important}#page-user-favour>.content{width:100%;min-width:0}#page-user-favour .xhh-folders-enhanced{min-width:0;width:100%!important;max-width:100%;flex:1}#page-user-favour .user-favour__header{width:100%;max-width:100%}.xhh-folder-layout{grid-template-columns:minmax(0,1fr)}.xhh-sidebar{position:static;max-height:210px;padding-right:0;border-bottom:1px solid var(--xf-line);padding-bottom:12px}.xhh-folder-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 8px}.xhh-top{flex-wrap:wrap}.xhh-thumb{width:56px;height:56px}}
   `;
   function mount(host) {
-    mountGeneration++; generation++; active = ''; views = new Map(); folders = []; folderError = ''; managing = false; message = ''; contentFilter = ''; folderFilter = '';
+    mountGeneration++; generation++;
+    const route = location.pathname + location.search;
+    const returning = savedRoute === route;
+    if (!returning) { active = ''; views = new Map(); folders = []; folderError = ''; managing = false; message = ''; contentFilter = ''; folderFilter = ''; }
+    savedRoute = route;
     nativeParent = host;
     root = el('section', { id: 'xhh-folders', 'aria-label': '收藏夹浏览与批量管理' });
     root.append(el('style', {}, css));
@@ -325,6 +331,7 @@
     ui.folderCount = el('h2', {}, '收藏夹');
     const folderLabel = el('label', { class: 'xhh-filter-label', htmlFor: 'xhh-folder-search' }, '查找收藏夹');
     ui.folderSearch = el('input', { id: 'xhh-folder-search', type: 'search', autocomplete: 'off', placeholder: '输入文件夹名' });
+    ui.folderSearch.value = folderFilter;
     ui.folderSearch.addEventListener('input', () => { folderFilter = ui.folderSearch.value; renderFolders(); });
     ui.folders = el('nav', { class: 'xhh-folder-nav', 'aria-label': '收藏夹' }); sidebar.append(ui.folderCount, folderLabel, ui.folderSearch, ui.folders);
     const main = el('div', { class: 'xhh-main' }), top = el('div', { class: 'xhh-top' });
@@ -333,6 +340,7 @@
     ui.summary = el('p', { class: 'xhh-summary' });
     const filterLabel = el('label', { class: 'xhh-filter-label', htmlFor: 'xhh-content-filter' }, '筛选已加载内容');
     ui.filter = el('input', { id: 'xhh-content-filter', type: 'search', autocomplete: 'off', placeholder: '标题、摘要或作者' });
+    ui.filter.value = contentFilter;
     ui.filter.addEventListener('input', () => { contentFilter = ui.filter.value; renderItems(); update(); });
     ui.selection = el('div', { class: 'xhh-selection', hidden: true });
     const checkRow = el('div', { class: 'xhh-selection-row' }); ui.all = el('input', { type: 'checkbox' }); ui.allText = el('span'); const allLabel = el('label'); allLabel.append(ui.all, ui.allText);
@@ -345,10 +353,13 @@
     main.append(top, ui.summary, filterLabel, ui.filter, ui.selection, ui.message, ui.items, load, original); layout.append(sidebar, main); root.append(layout);
     const header = host.querySelector(':scope > .user-favour__header'); if (header) header.after(root); else host.prepend(root);
     nativeParent.classList.add('xhh-folders-enhanced'); state.mounted = true;
-    renderFolders(); update(); loadFolders(); loadMore();
+    renderFolders(); renderItems(); update();
+    if (!folders.length) loadFolders();
+    if (!view().loaded) loadMore();
   }
   function unmount() {
     if (state.moving) stopRequested = true;
+    for (const current of views.values()) current.loading = false;
     mountGeneration++; generation++; root?.remove(); root = null; nativeParent?.classList.remove('xhh-folders-enhanced'); nativeParent = null; state.mounted = false;
     if (dialog?.isConnected && !state.moving) dialog.close();
   }
@@ -365,7 +376,8 @@
   observer.observe(document, { childList: true, subtree: true });
   window.addEventListener('popstate', checkMount);
   window.addEventListener('beforeunload', event => { if (state.moving) { event.preventDefault(); event.returnValue = ''; } });
-  state.set = on => { if (state.moving) return '请先停止移动并等待当前请求结束'; state.enabled = !!on; if (!state.enabled) unmount(); else checkMount(); return state.enabled; };
+  window.addEventListener('xhh-open-mode-change', () => { if (root?.isConnected) renderItems(); });
+  state.set = on => { if (state.moving) return '请先停止移动并等待当前请求结束'; state.enabled = !!on; if (!state.enabled) { savedRoute = null; unmount(); } else checkMount(); return state.enabled; };
   state.refresh = refresh;
   state.status = () => ({ enabled: state.enabled, mounted: state.mounted, activeFolder: active, folders: folders.length, loaded: view().items.length, selected: view().selected.size, moving: state.moving });
   checkMount();

@@ -10,8 +10,10 @@
   function rowOf(event) {
     return onHistory() && event.target instanceof Element ? event.target.closest(ROW) : null;
   }
-  function arm(row) {
-    const token = intent = { row, url: location.href };
+  const navigation = window.__xhhNavigation;
+  let forceNewTab = false;
+  function arm(row, force = false) {
+    const token = intent = { row, url: location.href, force };
     // 路由调用在条目的事件处理器内同步发生，不留下 800ms 的跨事件拦截窗口。
     // 原生用户事件可能在捕获监听器返回后立刻执行微任务；微任务清理会早于 Vue 的冒泡监听器。
     // 因此用下一任务清理，只覆盖本次事件分发及其同步/微任务处理。
@@ -45,8 +47,10 @@
           if (typeof href === 'string' && href) url = new URL(href, location.href);
         } catch (_) { /* 无效路由交给站点处理 */ }
         if (url && url.origin === location.origin && /^\/app\/bbs\/link\/\d+\/?$/.test(url.pathname)) {
-          open(url.href);
-          return Promise.resolve();
+          if (token.force || navigation?.mode !== 'current-tab') {
+            open(url.href);
+            return Promise.resolve();
+          }
         }
       }
       return original.call(this, to, ...rest);
@@ -60,7 +64,7 @@
     middleDown = null;
     if (!state.enabled || event.button !== 0 || event.shiftKey || event.defaultPrevented) return;
     const row = rowOf(event);
-    if (row && ensureRouter()) arm(row);
+    if (row && ensureRouter()) arm(row, forceNewTab || event.ctrlKey || event.metaKey);
   }, true);
   window.addEventListener('mousedown', event => {
     middleDown = null;
@@ -79,7 +83,9 @@
     if (!state.enabled || !state.middleClick || !row || row !== down || !ensureRouter()) return;
     event.preventDefault();
     // 用站点自己的处理器解析地址，不依赖 Vue 私有的条目数据结构。
-    row.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, view: window }));
+    forceNewTab = true;
+    try { row.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0, view: window })); }
+    finally { forceNewTab = false; }
   }, true);
   window.addEventListener('auxclick', event => {
     if (state.enabled && state.middleClick && event.button === 1 && rowOf(event)) event.preventDefault();

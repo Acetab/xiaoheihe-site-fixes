@@ -28,6 +28,8 @@
     return 'https://www.xiaoheihe.cn/app/bbs/link/' + id;
   }
   const originals = new Map();
+  const navigation = window.__xhhNavigation;
+  const patchedTarget = () => navigation?.mode === 'current-tab' ? '_self' : '_blank';
   function fixOne(a) {
     if (!state.enabled) return;
     const raw = a.getAttribute('href');
@@ -36,15 +38,16 @@
     const previous = originals.get(a);
     originals.set(a, {
       href: raw, url,
-      target: previous && a.getAttribute('target') === '_blank' ? previous.target : a.getAttribute('target'),
+      target: previous && a.getAttribute('target') === previous.patchedTarget ? previous.target : a.getAttribute('target'),
       rel: previous && a.getAttribute('rel') === previous.patchedRel ? previous.rel : a.getAttribute('rel')
     });
     const rel = new Set((a.getAttribute('rel') || '').split(/\s+/).filter(Boolean));
     rel.add('noopener'); rel.add('noreferrer');
     a.setAttribute('href', url);
-    a.setAttribute('target', '_blank');
+    a.setAttribute('target', patchedTarget());
     a.setAttribute('rel', [...rel].join(' '));
     originals.get(a).patchedRel = a.getAttribute('rel');
+    originals.get(a).patchedTarget = a.getAttribute('target');
     state.fixed++;
   }
   function scan(root) {
@@ -70,7 +73,10 @@
   for (const type of ['click', 'auxclick']) window.addEventListener(type, event => {
     if (event.target instanceof Element) {
       const a = event.target.closest('a[href]');
-      if (a) fixOne(a);
+      if (a) {
+        fixOne(a);
+        if (state.enabled && type === 'click' && originals.get(a)?.url === a.getAttribute('href')) navigation?.handleLink(event);
+      }
     }
   }, true);
   state.toWebUrl = toWebUrl;
@@ -83,7 +89,7 @@
         if (a.getAttribute('href') !== old.url) continue;
         a.setAttribute('href', old.href);
         for (const key of ['target', 'rel']) {
-          if (a.getAttribute(key) !== (key === 'target' ? '_blank' : old.patchedRel)) continue;
+          if (a.getAttribute(key) !== (key === 'target' ? old.patchedTarget : old.patchedRel)) continue;
           if (old[key] === null) a.removeAttribute(key); else a.setAttribute(key, old[key]);
         }
       }
@@ -91,4 +97,9 @@
     }
     return state.enabled;
   };
+  window.addEventListener('xhh-open-mode-change', () => {
+    for (const [a, old] of originals) if (a.getAttribute('href') === old.url && a.getAttribute('target') === old.patchedTarget) {
+      old.patchedTarget = patchedTarget(); a.setAttribute('target', old.patchedTarget);
+    }
+  });
 })();

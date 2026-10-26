@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         小黑盒 - 评论区点击不跳动
 // @namespace    https://github.com/Acetab/xiaoheihe-site-fixes
-// @version      1.3.0
+// @version      1.4.0
 // @description  点击可见评论不滚动，裁切评论只做最小位移，保留外部评论定位。
 // @author       Acetab
 // @homepageURL  https://github.com/Acetab/xiaoheihe-site-fixes

@@ -1,6 +1,6 @@
 # 小黑盒网页版增强
 
-修复小黑盒网页版的评论跳动、浏览历史跳转和引用链接，并补上收藏夹浏览与批量移动。适用于 `www.xiaoheihe.cn` 和 `xiaoheihe.cn`，当前版本 **1.3.0**。
+修复小黑盒网页版的评论跳动、浏览历史跳转和引用链接，并补上收藏夹浏览与批量移动。适用于 `www.xiaoheihe.cn` 和 `xiaoheihe.cn`，当前版本 **1.4.0**。
 
 ## 安装
 
@@ -17,8 +17,8 @@
 | 功能 | 效果 | 安装 |
 | --- | --- | --- |
 | 评论点击修复 | 可见评论点击后不再强制居中；裁切评论只做最小滚动，保留外部评论定位 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-no-comment-autoscroll.user.js) |
-| 浏览历史新标签页 | 左键、中键打开新标签页，保留列表位置；Shift + 左键保留当前页跳转 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-list-open-in-new-tab.user.js) |
-| 引用链接修复 | 将帖子类型的 `heybox://` 引用链接转换为网页版链接，在新标签页打开 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-heybox-link-fix.user.js) |
+| 浏览历史打开方式 | 默认新标签页，也可选择当前页打开；返回恢复位置，支持中键及快捷键 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-list-open-in-new-tab.user.js) |
+| 引用链接修复 | 将帖子类型的 `heybox://` 引用链接转换为网页版链接，跟随打开方式设置 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-heybox-link-fix.user.js) |
 | 收藏夹管理 | 按收藏夹浏览、加载更多、筛选已加载内容、多选并移动到目标夹 | [独立版](https://raw.githubusercontent.com/Acetab/xiaoheihe-site-fixes/main/xiaoheihe-favorite-folders.user.js) |
 
 ## 收藏夹怎么用
@@ -36,9 +36,23 @@
 
 **批量移动属于实验功能**：接口与参数对照官方客户端声明，成功、失败、停止、跨页选择等流程通过受控响应验证，尚未用真实收藏完成服务器端移动验证。
 
+## 帖子打开方式与返回
+
+点击页面右下角的 **“脚本设置”**，选择：
+
+- **新标签页打开（默认）**：保留列表，适合同时查看多个帖子，升级后延续原来习惯。
+- **当前页打开，返回继续浏览**：在同一页看帖子，点击站点左上角“返回”或使用浏览器后退继续浏览。
+
+设置作用于浏览历史、增强收藏夹和修复后的引用链接，自动保存在当前浏览器的本站设置中，各人的选择互不影响。中键、Ctrl / Command + 点击仍可新开标签页；Shift + 点击历史条目保留原来的当前页跳转。
+
+收藏页返回时保留所选收藏夹、已加载内容、两个筛选框、勾选状态及滚动位置。原生历史页会重新请求列表，脚本会恢复筛选并继续分页到原加载数量，再还原滚动位置；慢网下可能短暂加载。用户主动滚动、点击或按键会停止自动位置恢复。
+
+浏览状态只保存在当前标签页的内存中，整页刷新、关闭页面后不保留。不会把收藏内容写入本地持久存储。共享设置组件会在多个独立版间复用；仍请避免同时启用合集和重复的独立版。
+
 ## 兼容性与限制
 
 - 2026-10-15 在 Windows / Edge 155 中，通过页面上下文注入同一份脚本验证评论、历史、真实引用链接及收藏夹浏览、分页和选择。受控回归覆盖引用链接 26 项、评论 6 项、收藏夹 25 项。
+- 2026-10-26 在 Windows / Edge 156 中注入 1.4.0 验证：历史页左上角返回、浏览器后退均恢复 60 条记录及原位置；“内容”筛选保留。收藏页返回保留 60 条内容、文件夹、两个筛选框、勾选与位置；默认新标签、中键和 Ctrl 点击实测通过。另有 5 项自动化状态测试、11 项页面受控边界检查。
 - 尚未验证用户脚本管理器的自动注入流程，也未验证 Firefox 或其他浏览器组合。脚本需要页面上下文，管理器的注入设置可能影响效果。
 - 新标签页是否获得焦点由浏览器决定。若浏览器阻止弹窗，需要允许本站弹出窗口后重试。
 - 依赖站点现有页面结构、路由和请求客户端；站点改版可能导致功能失效。没有固定站点资源哈希或导出名。
@@ -63,10 +77,11 @@ window.__xhhFolders.set(false)      // 收藏夹界面
 
 ## 开发
 
-`src/` 是四项功能的源码。使用 Node.js，无需安装依赖：
+`src/` 保存四项功能及共用的 `navigation.js` 设置与返回组件。使用 Node.js，无需安装依赖：
 
 ```sh
 node build.cjs
+node --test tests/navigation.test.cjs
 ```
 
 会重新生成根目录的合集和四个独立 `.user.js` 文件。修改源码时一并提交生成文件；发布新版本时更新 `build.cjs` 中的版本号。GitHub 安装文件带有当前仓库的更新地址；Greasy Fork 安装版通过 Greasy Fork 获取更新，需同步发布新版本。更新由脚本管理器按其设置检查。
